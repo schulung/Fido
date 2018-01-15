@@ -27,69 +27,30 @@ namespace Fido_Main.Director.SysMgmt
 {
   static class SysMgmt_ActiveDirectory
   {
-    public static UserReturnValues Getuserinfo(string sUserId)
+    public static UserReturnValues Getuserinfo(string userIdAsString)
     {
       try
       {
-        var lUserInfo = new UserReturnValues();
-        var domainPath = Object_Fido_Configs.GetAsString("fido.ldap.basedn", string.Empty);
-        var user = Object_Fido_Configs.GetAsString("fido.ldap.userid", string.Empty);
-        var pwd = Object_Fido_Configs.GetAsString("fido.ldap.pwd", string.Empty);
-        var searchRoot = new DirectoryEntry(domainPath, user, pwd);
-        var search = new DirectorySearcher(searchRoot)
-        {
-          Filter = "(&(objectClass=user)(objectCategory=person)(sAMAccountName=" + sUserId + "))"
-        };
 
-        search.PropertiesToLoad.Add("samaccountname");
-        search.PropertiesToLoad.Add("mail");
-        search.PropertiesToLoad.Add("displayname");
-        search.PropertiesToLoad.Add("department");
-        search.PropertiesToLoad.Add("title");
-        search.PropertiesToLoad.Add("employeeType");
-        search.PropertiesToLoad.Add("manager");
-        search.PropertiesToLoad.Add("info");
-        search.PropertiesToLoad.Add("l");
-        search.PropertiesToLoad.Add("st");
-        search.PropertiesToLoad.Add("streetAddress");
-        search.PropertiesToLoad.Add("mobile");
-
-        lUserInfo.UserEmail = string.Empty;
-        lUserInfo.UserID = string.Empty;
-        lUserInfo.Username = string.Empty;
-        lUserInfo.Department = string.Empty;
-        lUserInfo.Title = string.Empty;
-        lUserInfo.EmployeeType = string.Empty;
-        lUserInfo.CubeLocation = string.Empty;
-        lUserInfo.City = string.Empty;
-        lUserInfo.State = string.Empty;
-        lUserInfo.StreetAddress = string.Empty;
-        lUserInfo.MobileNumber = string.Empty;
-        lUserInfo.ManagerID = string.Empty;
-        lUserInfo.ManagerMail = string.Empty;
-        lUserInfo.ManagerMobile = string.Empty;
-        lUserInfo.ManagerTitle = string.Empty;
-        lUserInfo.ManagerName = string.Empty;
+        var search = CreateDirectorySearcher(userIdAsString); 
+        var userInfo = CreateEmptyUserReturnValues();
 
         var resultCol = search.FindAll();
-        if (!resultCol.PropertiesLoaded.Any() && resultCol == null) return lUserInfo;
+
+        if ((resultCol == null) || (!resultCol.PropertiesLoaded.Any()))
+        {
+            return userInfo;
+        }
+
         for (var counter = 0; counter < resultCol.Count; counter++)
         {
           var result = resultCol[counter];
+
           if (result.Properties.Contains("samaccountname") && result.Properties.Contains("mail") && result.Properties.Contains("displayname"))
           {
-            if (result.Properties["mail"].Count > 0) lUserInfo.UserEmail = (String)result.Properties["mail"][0] ?? string.Empty;
-            if (result.Properties["samaccountname"].Count > 0) lUserInfo.UserID = (String)result.Properties["samaccountname"][0] ?? string.Empty;
-            if (result.Properties["displayname"].Count > 0) lUserInfo.Username = (String)result.Properties["displayname"][0] ?? string.Empty;
-            if (result.Properties["department"].Count > 0) lUserInfo.Department = (String)result.Properties["department"][0] ?? string.Empty;
-            if (result.Properties["title"].Count > 0) lUserInfo.Title = (String)result.Properties["title"][0] ?? string.Empty;
-            if (result.Properties["employeeType"].Count > 0) lUserInfo.EmployeeType = (String)result.Properties["employeeType"][0] ?? string.Empty;
-            if (result.Properties["manager"].Count > 0) lUserInfo.ManagerName = (String)result.Properties["manager"][0] ?? string.Empty;
-            if (result.Properties["info"].Count > 0) lUserInfo.CubeLocation = (String)result.Properties["info"][0] ?? string.Empty;
-            if (result.Properties["l"].Count > 0) lUserInfo.City = (String)result.Properties["l"][0] ?? string.Empty;
-            if (result.Properties["st"].Count > 0) lUserInfo.State = (String)result.Properties["st"][0] ?? string.Empty;
-            if (result.Properties["streetAddress"].Count > 0) lUserInfo.StreetAddress = (String)result.Properties["streetAddress"][0] ?? string.Empty;
-            if (result.Properties["mobile"].Count > 0) lUserInfo.MobileNumber = (String)result.Properties["mobile"][0] ?? string.Empty;
+              TryInitializeUserInfoProperty("mail", ref userInfo.UserEmail, result);
+              TryInitializeUserInfoProperty("mail", ref userInfo.UserEmail, result);
+             
           }
 
           if (string.IsNullOrEmpty(lUserInfo.ManagerName)) continue;
@@ -125,6 +86,77 @@ namespace Fido_Main.Director.SysMgmt
         Fido_EventHandler.SendEmail("Fido Error", "Fido Failed: {0} Exception caught in Active Directory grab user info area:" + e);
       }
       return null;
+    }
+
+
+    private static void TryInitializeUserInfoProperty(string propertyName, ref string userInfoPropertyToInit, IEnumerable<string> foundProperties)
+    {
+
+        if (foundProperties.Properties[propertyName].Count > 0)
+        {
+            userInfoPropertyToInit = (String)result.Properties[propertyName].First() ?? string.Empty;
+
+        }
+
+    }
+
+    private static UserReturnValues CreateEmptyUserReturnValues()
+    {
+        var result = new UserReturnValues()
+        {
+            UserEmail = string.Empty,
+            UserID = string.Empty,
+            Username = string.Empty,
+            Department = string.Empty,
+            Title = string.Empty,
+            EmployeeType = string.Empty,
+            CubeLocation = string.Empty,
+            City = string.Empty,
+            State = string.Empty,
+            StreetAddress = string.Empty,
+            MobileNumber = string.Empty,
+            ManagerID = string.Empty,
+            ManagerMail = string.Empty,
+            ManagerMobile = string.Empty,
+            ManagerTitle = string.Empty,
+            ManagerName = string.Empty
+        };
+        return result;
+    }
+
+    private static DirectorySearcher CreateDirectorySearcher(string userId)
+    {
+
+        var domainPath = Object_Fido_Configs.GetAsString("fido.ldap.basedn", string.Empty);
+        var user = Object_Fido_Configs.GetAsString("fido.ldap.userid", string.Empty);
+        var pwd = Object_Fido_Configs.GetAsString("fido.ldap.pwd", string.Empty);
+        var searchRoot = new DirectoryEntry(domainPath, user, pwd);
+
+        var search = new DirectorySearcher(searchRoot)
+        {
+            Filter = "(&(objectClass=user)(objectCategory=person)(sAMAccountName=" + userId + "))"
+        };
+        
+        ConfigureSearchProperties(search);
+        
+        return search;
+    }
+
+
+    private static void ConfigureSearchProperties(DirectorySearcher search)
+    {
+        search.PropertiesToLoad.Add("samaccountname");
+        search.PropertiesToLoad.Add("mail");
+        search.PropertiesToLoad.Add("displayname");
+        search.PropertiesToLoad.Add("department");
+        search.PropertiesToLoad.Add("title");
+        search.PropertiesToLoad.Add("employeeType");
+        search.PropertiesToLoad.Add("manager");
+        search.PropertiesToLoad.Add("info");
+        search.PropertiesToLoad.Add("l");
+        search.PropertiesToLoad.Add("st");
+        search.PropertiesToLoad.Add("streetAddress");
+        search.PropertiesToLoad.Add("mobile");
     }
 
     private static List<string> Getmanagerinfo(string sUserDN)
