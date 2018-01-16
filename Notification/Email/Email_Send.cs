@@ -26,11 +26,11 @@ using Fido_Main.Fido_Support.Objects.Fido;
 
 namespace Fido_Main.Notification.Email
 {
-  static class Email_Send
+  static class EmailSender
   {
 
     //function to send email
-    public static void Send(string sTo, string sCC, string sFrom, string sSubject, string sBody, List<string> lGaugeAttachment, string sEmailAttachment)
+    public static void Send(Email email)
     {
       var sErrorEmail = Object_Fido_Configs.GetAsString("fido.email.erroremail", null);
       var sFidoEmail = Object_Fido_Configs.GetAsString("fido.email.fidoemail", null);
@@ -38,30 +38,30 @@ namespace Fido_Main.Notification.Email
       
       try
       {
-        var mMessage = new MailMessage {IsBodyHtml = true};
-        
-        if (!string.IsNullOrEmpty(sTo))
+        var smptMessage = new MailMessage {IsBodyHtml = true};
+
+        if (email.EmailAddress.HasSendToField)
         {
-          mMessage.To.Add(sTo);
+            smptMessage.To.Add(email.EmailAddress.SendTo);
         }
         else
         {
           Send(sErrorEmail, "", sFidoEmail, "Fido Error", "Fido Failed: No sender specified in email.", null, null);
         }
 
-        if (!string.IsNullOrEmpty(sCC))
+        if (email.EmailAddress.HasSendCopyField)
         {
-          mMessage.CC.Add(sCC);
+            smptMessage.CC.Add(email.EmailAddress.SendCopy);
         }
-        mMessage.From = new MailAddress(sFrom);
-        mMessage.Body = sBody;
-        mMessage.Subject = sSubject; 
-        
-        if (lGaugeAttachment != null)
+        smptMessage.From = new MailAddress(email.EmailAddress.SendFrom);
+        smptMessage.Body = email.EmailContent.Body;
+        smptMessage.Subject = email.Subject;
+
+        if (email.EmailContent.GaugeAttachment != null)
         {
-          if (mMessage.Body != null)
+          if (smptMessage.Body != null)
           {
-            var htmlView = AlternateView.CreateAlternateViewFromString(mMessage.Body.Trim(), null, "text/html"); 
+            var htmlView = AlternateView.CreateAlternateViewFromString(smptMessage.Body.Trim(), null, "text/html"); 
             for (var i = 0; i < lGaugeAttachment.Count(); i++)
             {
               switch (i)
@@ -86,7 +86,7 @@ namespace Fido_Main.Notification.Email
             }
 
           
-            mMessage.AlternateViews.Add(htmlView);
+            smptMessage.AlternateViews.Add(htmlView);
           }
         }
 
@@ -94,7 +94,7 @@ namespace Fido_Main.Notification.Email
         {
           var sAttachment = new Attachment(sEmailAttachment);
           
-          mMessage.Attachments.Add(sAttachment);
+          smptMessage.Attachments.Add(sAttachment);
         }
 
         using (var sSMTP = new SmtpClient(sSMTPServer))
@@ -103,7 +103,7 @@ namespace Fido_Main.Notification.Email
           var sSMTPUser = Object_Fido_Configs.GetAsString("fido.smtp.smtpuserid", string.Empty);
           var sSMTPPwd = Object_Fido_Configs.GetAsString("fido.smtp.smtppwd", string.Empty);
           sSMTP.Credentials = new NetworkCredential(sSMTPUser,sSMTPPwd);
-          sSMTP.Send(mMessage);
+          sSMTP.Send(smptMessage);
           sSMTP.Dispose();
         }
       }

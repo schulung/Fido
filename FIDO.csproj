@@ -151,6 +151,9 @@
     <Compile Include="Main\Detectors\Detect_Cyphort_v3.cs" />
     <Compile Include="Main\Detectors\Detect_Protectwise_v1.cs" />
     <Compile Include="Main\Detectors\Detect_SentinelOne.cs" />
+    <Compile Include="Notification\Email\Email.cs" />
+    <Compile Include="Notification\Email\EmailAddress.cs" />
+    <Compile Include="Notification\Email\EmailContent.cs" />
     <Compile Include="Notification\Notification_Helper\Notfication_Helper.cs" />
     <Compile Include="Notification\Notification_Helper\Notfication_ProtectWise_Helper.cs" />
     <Compile Include="Notification\Notification_Helper\Notification_CarbonBlack_Helper.cs" />
